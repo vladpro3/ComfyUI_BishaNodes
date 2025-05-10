@@ -1,0 +1,15 @@
+[project]
+name = "comfyui_bishanodes"
+description = "Custom nodes for ComfyUI to generate images in multiple resolutions (including ultra-wide formats)"
+version = "1.0.0"
+license = { file = "LICENSE" }
+dependencies = ["numba", "colour-science", "rembg", "pixeloe"]
+
+[project.urls]
+Repository = "https://github.com/vladpro3/ComfyUI_BishaNodes"
+#  Used by Comfy Registry https://comfyregistry.org
+
+[tool.comfy]
+PublisherId = ""
+DisplayName = "ComfyUI_BishaNodes"
+Icon = ""
