@@ -1,55 +1,29 @@
-import random
 import torch
-import os
 import comfy.model_management
-import secrets
-import time
 
 
-def generate_seed():
-    return time.time_ns() ^ secrets.randbits(64)
+def load_strings_from_files(file_paths, max_lines):
+    all_lines = []
 
+    for file_path in file_paths:
+        if len(all_lines) >= max_lines:
+            break
 
-def read_file(file_path):
-    lines = []
+        try:
+            with open(file_path, 'r', encoding='utf-8') as file:
+                lines = [line.strip() for line in file.readlines() if line.strip()]
+                all_lines.extend(lines)
+        except UnicodeDecodeError:
+            try:
+                with open(file_path, 'r', encoding='cp1251') as file:
+                    lines = [line.strip() for line in file.readlines() if line.strip()]
+                    all_lines.extend(lines)
+            except Exception as e:
+                print(f"Не удалось прочитать файл {file_path}: {str(e)}")
+        except Exception as e:
+            print(f"Ошибка при обработке файла {file_path}: {str(e)}")
 
-    if file_path != "":
-        file_path = os.path.expandvars(file_path)
-        if not os.path.isfile(file_path):
-            raise FileNotFoundError(f"The file at path '{file_path}' does not exist.")
-        with open(file_path, 'r') as file:
-            file_lines = file.readlines()
-
-        for line in file_lines:
-            line = line.replace("\r", "")
-            line = line.strip()
-            if line != "":
-                lines.append(line)
-
-    return lines
-
-
-def get_file_line(self, lines, next_line, line_count):
-    text = ""
-
-    if line_count > 0:
-        if next_line == "random":
-            self.random.seed(generate_seed())
-            self.current_line = self.random.randint(0, line_count - 1)
-
-        self.current_line = self.current_line % line_count
-        text = text + lines[self.current_line]
-
-        if next_line == "increment":
-            self.current_line = self.current_line + 1
-        elif next_line == "decrement":
-            self.current_line = self.current_line - 1
-            if self.current_line < 0:
-                self.current_line = line_count - 1
-
-    text = text.replace("\r", "").replace("\n", " ").replace("<", " <")
-
-    return text
+    return all_lines[:max_lines]
 
 
 square_resolutions = [
@@ -155,74 +129,60 @@ class EmptyLatentSizePicker:
         return ({"samples": latent}, width, height,)
 
 
-class CreatePromptsWithTextFromFile:
-    def __init__(self):
-        self.current_line = 0
-        self.random = random.Random()
-
-    @classmethod
-    def IS_CHANGED(cls, **kwargs):
-        return float("NaN")
-
+class LoadDataFromFiles:
     @classmethod
     def INPUT_TYPES(cls):
-        return {
+        maxFileCount = 15
+        maxValuesCount = 1000
+
+        inputs = {
             "required": {
-                "file_path": ("STRING", {"default": "", "multiline": False}),
-                "next_line": (["increment", "decrement", "random", "fixed"], {"default": "fixed"}),
-                "start_line": ("INT", {"default": 0, "min": 0, "step": 1}),
-                "results": ("INT", {"default": 1, "min": 1, "step": 1}),
+                "files_count": ("INT", {"default": 3, "min": 1, "max": maxFileCount, "step": 1}),
+                "values_limit": ("INT", {"default": 50, "min": 1, "max": maxValuesCount, "step": 1}),
             },
-            "optional": {
-                "prepend_text": ("STRING", {"multiline": True, "default": ""}),
-                "append_text": ("STRING", {"multiline": True, "default": ""}),
-            }
         }
 
-    RETURN_TYPES = ("STRING",)
-    RETURN_NAMES = ("prompts",)
-    OUTPUT_IS_LIST = (True,)
+        for i in range(0, maxFileCount):
+            inputs["required"][f"file_{i+1}"] = ("STRING", {"default": "", "multiline": False})
+            inputs["required"][f"enabled_{i+1}"] = ("BOOLEAN", {"default": False })
+
+        return inputs
+
+
+    RETURN_TYPES = ("STRING","STRING","INT",)
+    RETURN_NAMES = ("values list","values","count")
+    OUTPUT_IS_LIST = (True,False,False)
     FUNCTION = "execute"
     CATEGORY = "BishaNodes"
 
-    def execute(self, file_path="", next_line="fixed", start_line=0, results=1, prepend_text="", append_text=""):
-        lines = read_file(file_path)
-        line_count = len(lines)
+    def execute(self, files_count, values_limit, **kwargs):
+        files = []
 
-        if start_line > line_count:
-            self.current_line = line_count
-        else:
-            self.current_line = start_line
+        for i in range(files_count):
+            text_key = f"file_{i+1}"
+            enable_key = f"enabled_{i+1}"
 
-        result = []
+            text_value = kwargs.get(text_key, "")
+            is_enabled = kwargs.get(enable_key, False)
 
-        if next_line in ["increment", "decrement"] and results > line_count:
-            results = line_count
+            if is_enabled and text_value.strip():
+                files.append(text_value)
 
-        for i in range(results):
-            text = get_file_line(self, lines, next_line, line_count)
+        lines_list = load_strings_from_files(files, values_limit)
+        line_count = len(lines_list)
+        lines = ", ".join(lines_list)
 
-            if prepend_text != "":
-                text = prepend_text + ", " + text
-            if append_text != "":
-                text = text + ", " + append_text
-
-            if i < results - 1:
-                result.append(text + "\n")
-            else:
-                result.append(text)
-
-        return (result,)
+        return (lines_list,lines,line_count,)
 
 
 MISC_CLASS_MAPPINGS = {
     "SimpleSizePicker": SimpleSizePicker,
     "EmptyLatentSizePicker": EmptyLatentSizePicker,
-    "CreatePromptsWithTextFromFile": CreatePromptsWithTextFromFile,
+    "LoadDataFromFiles": LoadDataFromFiles,
 }
 
 MISC_NAME_MAPPINGS = {
     "SimpleSizePicker": "Simple Size Picker",
     "EmptyLatentSizePicker": "Empty Latent Size Picker",
-    "CreatePromptsWithTextFromFile": "Create Prompts With Text From File",
+    "LoadDataFromFiles": "Load Data From Files",
 }

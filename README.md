@@ -6,6 +6,9 @@
 ### 1. Simple Size Picker
 ### 2. Empty Latent Size Picker
 ### 3. Create Prompts With Text From File
+### 4. Wildcard Replace
+### 5. Wildcard Replace (with values from File)
+### 6. Load Data From Files
 
 ---
 
@@ -30,7 +33,7 @@
   - Eliminates manual "Empty Latent Image" nodes
   - Preserves selected dimensions in latent space
 
-### 📝 **Prompt Engineering Node**
+### 📝 **Prompt Engineering Nodes**
 #### **Create Prompts With Text From File**
 - **Batch Prompt Generation**:
   - 🔄 Combine base text with dynamic content from files
@@ -42,6 +45,22 @@
   - Character variations (e.g., "a portrait of [name_from_file]")
   - Style mixing ("in the style of [artist_from_file]")
   - Batch testing different descriptors
+
+#### **Wildcard Replace** and **Wildcard Replace (with values from File)**
+- **Enhance Prompt with templates**:
+  - 🔄 Combine base text with dynamic content from files
+  - 🎛️ Control values quantity with `values_count` parameter
+- **Variability of values**:
+  - Supports .txt files with line-separated entries _for Wildcard Replace (with values from File)_
+  - Supports a list of values as input data
+  - Random value selection for diverse outputs
+- **Use Cases**:
+  - Character variations (e.g., "a portrait of {person} with {object}")
+  - Style mixing ("in the style of {artist}")
+  > `{person}`, `{object}` and `{artist}` are set in the `wildcard` parameter
+
+#### **Load Data From Files**
+- Loading data from multiple files with the ability to disable files
 
 ---
 
@@ -65,71 +84,17 @@ Alternatively, search for `ComfyUI_BishaNodes` in ComfyUI’s **Custom Nodes Man
 
 ## 🎮 **Usage Examples**
 
-### Resolution Workflow
 ```
 TODO
 ```
-
-### Prompt Expansion Workflow
-```
-TODO
-```
-
----
-
-## 🌐 **Advanced Use Cases**
-
-**A/B Testing Prompts**:
-```python
-# styles.txt
-cyberpunk neon
-oil painting
-watercolor sketch
-```
-   → Generates: ["photo of a cat, cyberpunk neon", "photo of a cat, oil painting", ...]
-
----
-
-## 💡 **Why These Nodes?**
-- **Time Savings**: Eliminate manual resolution math and prompt duplication
-- **Scalability**: Process hundreds of variations with 1-click changes
-- **Organization**: Structured output for batch workflows
-- **Extensible**: Add custom resolutions via text sources
 
 ---
 
 ## 🔧 **Technical Specifications**
 
-### **Simple Size Picker**
-- **Output Types**:
-  - `width` (INT)
-  - `height` (INT)
-- **Default Resolution**: 512 x 512
-
-### **Empty Latent Size Picker**
-- **Additional Output**:
-  - `latent` (LATENT) with batch support
-
-### **Create Prompts With Text From File**
-- **Supported Formats**:
-  - `.txt` (line-delimited)
-  - `.csv` (first column)
-- **Advanced Parameters** *(For `Create Prompts With Text From File` node)*
-
-| Parameter      | Type/Options                  | Description                                                                 | Example Usage                          |
-|---------------|-------------------------------|-----------------------------------------------------------------------------|----------------------------------------|
-| **`next_line`** | `increment` \| `decrement` \| `random` \| `fixed` | Defines how to select the next line from the file:<br>- `increment`: Sequentially moves forward<br>- `decrement`: Sequentially moves backward<br>- `random`: Picks lines randomly<br>- `fixed`: Always uses the same line (requires `start_line`) | `random` (for varied prompts)          |
-| **`start_line`** | Integer (`0`-based)          | Sets the **starting line offset** in the file.<br>- Only affects `increment`/`decrement`/`fixed` modes.<br>- If `fixed` mode is selected, this line will be used for all prompts. | `10` (skips first 10 lines)            |
-| **`results`**   | Integer (`≥1`)               | Controls the **number of generated prompts** (lines to process).| `3` (outputs 3 prompts)                |
-
-- **File Requirements**:
-  - Text file must have at least `start_line + results` lines for sequential modes.
-  - Empty lines are **skipped automatically**.
-
-- **Behavior Examples**:
-  - `next_line=increment`, `start_line=5`, `results=3` → Lines **5, 6, 7**
-  - `next_line=random`, `results=5` → **5 random lines**
-  - `next_line=fixed`, `start_line=2` → **Only line 2** (repeated for all prompts)
+```
+TODO
+```
 
 ---
 
