@@ -1,5 +1,5 @@
 [project]
-name = "comfyui_bishanodes"
+name = "ComfyUI_BishaNodes"
 description = "Custom nodes for ComfyUI to improve promts and image settings"
 version = "1.0.0"
 license = { file = "LICENSE" }
