@@ -1,29 +1,46 @@
+import os
 import torch
 import comfy.model_management
 
 
-def load_strings_from_files(file_paths, max_lines):
+class _AnyType(str):
+    """Always equal in != comparisons — allows ComfyUI to accept any input type."""
+    def __ne__(self, other): return False
+
+_any_type = _AnyType("*")
+
+
+class _FlexibleOptionalInputType(dict):
+    """Makes INPUT_TYPES accept dynamic unknown keys (e.g. file_1, file_2, ...)."""
+    def __init__(self, type):
+        self.type = type
+    def __getitem__(self, key):
+        return (self.type,)
+    def __contains__(self, key):
+        return True
+
+
+def load_strings_from_files(file_paths):
     all_lines = []
 
     for file_path in file_paths:
-        if len(all_lines) >= max_lines:
-            break
+        if not os.path.exists(file_path):
+            print(f"[BishaNodes] Файл не найден: {file_path}")
+            continue
 
         try:
-            with open(file_path, 'r', encoding='utf-8') as file:
-                lines = [line.strip() for line in file.readlines() if line.strip()]
-                all_lines.extend(lines)
+            with open(file_path, 'r', encoding='utf-8') as f:
+                all_lines.extend(line.strip() for line in f if line.strip())
         except UnicodeDecodeError:
             try:
-                with open(file_path, 'r', encoding='cp1251') as file:
-                    lines = [line.strip() for line in file.readlines() if line.strip()]
-                    all_lines.extend(lines)
+                with open(file_path, 'r', encoding='cp1251') as f:
+                    all_lines.extend(line.strip() for line in f if line.strip())
             except Exception as e:
-                print(f"Не удалось прочитать файл {file_path}: {str(e)}")
+                print(f"[BishaNodes] Не удалось прочитать файл {file_path}: {e}")
         except Exception as e:
-            print(f"Ошибка при обработке файла {file_path}: {str(e)}")
+            print(f"[BishaNodes] Ошибка при обработке файла {file_path}: {e}")
 
-    return all_lines[:max_lines]
+    return all_lines
 
 
 square_resolutions = [
@@ -132,47 +149,31 @@ class EmptyLatentSizePicker:
 class LoadDataFromFiles:
     @classmethod
     def INPUT_TYPES(cls):
-        maxFileCount = 15
-        maxValuesCount = 1000
-
-        inputs = {
-            "required": {
-                "files_count": ("INT", {"default": 3, "min": 1, "max": maxFileCount, "step": 1}),
-                "values_limit": ("INT", {"default": 50, "min": 1, "max": maxValuesCount, "step": 1}),
-            },
+        return {
+            "required": {},
+            "optional": _FlexibleOptionalInputType(_any_type),
         }
 
-        for i in range(0, maxFileCount):
-            inputs["required"][f"file_{i+1}"] = ("STRING", {"default": "", "multiline": False})
-            inputs["required"][f"enabled_{i+1}"] = ("BOOLEAN", {"default": False })
-
-        return inputs
-
-
-    RETURN_TYPES = ("STRING","STRING","INT",)
-    RETURN_NAMES = ("values list","values","count")
-    OUTPUT_IS_LIST = (True,False,False)
+    RETURN_TYPES = ("STRING", "STRING", "INT",)
+    RETURN_NAMES = ("values list", "values", "count")
+    OUTPUT_IS_LIST = (True, False, False)
     FUNCTION = "execute"
     CATEGORY = "BishaNodes"
 
-    def execute(self, files_count, values_limit, **kwargs):
-        files = []
+    def execute(self, **kwargs):
+        # Collect all active file paths from dynamic widgets: {"on": bool, "file": str}
+        files = [
+            v["file"]
+            for k, v in kwargs.items()
+            if k.startswith("file_") and isinstance(v, dict)
+            and v.get("on") and v.get("file", "").strip()
+        ]
 
-        for i in range(files_count):
-            text_key = f"file_{i+1}"
-            enable_key = f"enabled_{i+1}"
-
-            text_value = kwargs.get(text_key, "")
-            is_enabled = kwargs.get(enable_key, False)
-
-            if is_enabled and text_value.strip():
-                files.append(text_value)
-
-        lines_list = load_strings_from_files(files, values_limit)
+        lines_list = load_strings_from_files(files)
         line_count = len(lines_list)
         lines = ", ".join(lines_list)
 
-        return (lines_list,lines,line_count,)
+        return (lines_list, lines, line_count,)
 
 
 MISC_CLASS_MAPPINGS = {
